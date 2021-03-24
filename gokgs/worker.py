@@ -50,9 +50,10 @@ async def loop_worker():
             try:
                 resp = await get()
                 msgs = resp.get('messages', [])
-                for msg in msgs:
+                timestamp = time.time_ns()
+                for i, msg in enumerate(msgs):
                     t = msg.get('type', 'UNKNOWN_TYPE')
-                    key = f'{t}_{time.time()}'
+                    key = f'{t}_{timestamp}_{i}'
                     await redis.set(key, json.dumps(msg), expire=3600)
             except asyncio.CancelledError:
                 raise
