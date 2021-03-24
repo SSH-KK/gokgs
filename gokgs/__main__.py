@@ -4,6 +4,7 @@ import uvicorn
 import dotenv
 
 from gokgs.app import app
+import gokgs.redis
 from gokgs import worker
 
 dotenv.load_dotenv()
