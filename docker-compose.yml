@@ -6,3 +6,10 @@ services:
       - 6379:6379
     volumes:
       - ./docker/redis:/data
+  gokgs:
+    build: .
+    ports:
+      - 8081:8081
+    depends_on:
+      - redis
+    env_file: .env
