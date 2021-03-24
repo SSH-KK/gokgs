@@ -6,6 +6,7 @@ import time
 import json
 
 import httpx
+from fastapi import Request
 from retrying_async import retry
 
 from gokgs.app import app
@@ -61,6 +62,19 @@ async def loop_worker():
                 await login(_name, _password)
     except asyncio.CancelledError:
         pass
+
+
+@app.post('/{action}')
+async def post_route(action: str, req: Request):
+    body = await req.json()
+    try:
+        resp = await post(action, body)
+        return {'result': 'ok'}
+    except Exception as e:
+        return {
+            'result': 'error',
+            'detail': str(e)
+        }
 
 
 @app.on_event('shutdown')
