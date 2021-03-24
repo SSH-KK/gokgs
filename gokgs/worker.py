@@ -6,7 +6,7 @@ import time
 import json
 
 import httpx
-from fastapi import Request
+from fastapi import Request, HTTPException
 from retrying_async import retry
 
 from gokgs.app import app
@@ -76,6 +76,27 @@ async def post_route(action: str, req: Request):
             'result': 'error',
             'detail': str(e)
         }
+
+
+@app.get('/{action}')
+async def get_route(action: str, order: str = 'all', delete: bool = True):
+    if order not in ('all', 'first', 'last'):
+        raise HTTPException(status_code=400, detail='invalid order')
+    redis = r()
+    action = action.upper() + '_*'
+    keys = await redis.keys(action)
+    if not keys:
+        return {}
+    keys.sort()
+    if order == 'first':
+        keys = keys[:1]
+    elif order == 'last':
+        keys = keys[-1:]
+    result = await redis.mget(*keys)
+    result = {k: v for k, v in zip(keys, result)}
+    if delete:
+        await redis.delete(*keys)
+    return result
 
 
 @app.on_event('shutdown')
