@@ -3,3 +3,4 @@ httpx
 aioredis
 python-dotenv
 uvicorn
+retrying-async
