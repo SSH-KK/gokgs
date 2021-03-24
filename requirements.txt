@@ -4,3 +4,5 @@ aioredis
 python-dotenv
 uvicorn
 retrying-async
+beautifulsoup4
+lxml
