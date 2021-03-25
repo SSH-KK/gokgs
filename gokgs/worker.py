@@ -21,7 +21,8 @@ client = httpx.AsyncClient()
 async def post(action, body):
     body = copy.deepcopy(body)
     body['type'] = action.upper()
-    resp = await client.post(URL, json=body)
+    body = json.dumps(body)
+    resp = await client.post(URL, data=body)
     resp.raise_for_status()
     return resp.text
 
@@ -35,7 +36,7 @@ async def login(name, password):
 
 
 async def get():
-    resp = await client.get(URL)
+    resp = await client.get(URL, timeout=30)
     resp.raise_for_status()
     try:
         return resp.json()
@@ -53,13 +54,17 @@ async def loop_worker():
                 timestamp = time.time_ns()
                 for i, msg in enumerate(msgs):
                     t = msg.get('type', 'UNKNOWN_TYPE')
-                    key = f'{t}_{timestamp}_{i}'
+                    if(t == 'ARCHIVE_JOIN'):
+                        username = msg.get('user').get('name')
+                        key = f'LAST_GAMES_USER_{username}'
+                    else:
+                    	key = f'{t}_{timestamp}_{i}'
+                    print(f'new_key = {key}')
                     await redis.set(key, json.dumps(msg), expire=3600)
             except asyncio.CancelledError:
-                raise
-            except httpx.ReadTimeout:
                 pass
             except Exception as e:
+                print(e)
                 await login(_name, _password)
     except asyncio.CancelledError:
         pass
@@ -70,6 +75,7 @@ async def post_route(action: str, req: Request):
     body = await req.json()
     try:
         resp = await post(action, body)
+        print(f'post_res = {resp}')
         return {'result': 'ok'}
     except Exception as e:
         return {
@@ -85,6 +91,7 @@ async def get_route(action: str, order: str = 'all', delete: bool = True):
     redis = r()
     action = action.upper() + '_*'
     keys = await redis.keys(action)
+    #print(f'keys = {keys}')
     if not keys:
         return {}
     keys.sort()
@@ -93,6 +100,7 @@ async def get_route(action: str, order: str = 'all', delete: bool = True):
     elif order == 'last':
         keys = keys[-1:]
     result = await redis.mget(*keys)
+    #print(f'res = {result}')
     result = {k: v for k, v in zip(keys, result)}
     if delete:
         await redis.delete(*keys)
