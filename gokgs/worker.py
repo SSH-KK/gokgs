@@ -21,8 +21,7 @@ client = httpx.AsyncClient()
 async def post(action, body):
     body = copy.deepcopy(body)
     body['type'] = action.upper()
-    body = json.dumps(body)
-    resp = await client.post(URL, data=body)
+    resp = await client.post(URL, json=body)
     resp.raise_for_status()
     return resp.text
 
@@ -36,7 +35,7 @@ async def login(name, password):
 
 
 async def get():
-    resp = await client.get(URL, timeout=30)
+    resp = await client.get(URL, timeout=15)
     resp.raise_for_status()
     try:
         return resp.json()
@@ -54,17 +53,16 @@ async def loop_worker():
                 timestamp = time.time_ns()
                 for i, msg in enumerate(msgs):
                     t = msg.get('type', 'UNKNOWN_TYPE')
-                    if(t == 'ARCHIVE_JOIN'):
-                        username = msg.get('user').get('name')
+                    if t == 'ARCHIVE_JOIN':
+                        username = msg.get('user', {}).get('name', 'UNKNOWN_USER')
                         key = f'LAST_GAMES_USER_{username}'
                     else:
-                    	key = f'{t}_{timestamp}_{i}'
-                    print(f'new_key = {key}')
+                        key = f'{t}_{timestamp}_{i}'
                     await redis.set(key, json.dumps(msg), expire=3600)
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                print(e)
+                print(e, file=sys.stderr)
                 await login(_name, _password)
     except asyncio.CancelledError:
         pass
@@ -75,7 +73,6 @@ async def post_route(action: str, req: Request):
     body = await req.json()
     try:
         resp = await post(action, body)
-        print(f'post_res = {resp}')
         return {'result': 'ok'}
     except Exception as e:
         return {

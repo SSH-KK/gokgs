@@ -9,7 +9,6 @@ url_top = 'http://localhost:8081/JOIN_ARCHIVE_REQUEST'
 
 @app.get('/get_top')
 async def get_top_users():
-    redis = r()
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, timeout=15)
         if resp.status_code != 200:
@@ -20,29 +19,31 @@ async def get_top_users():
     ranks = [name.parent.next_sibling.text for name in names]
     names = [name.text for name in names]
     ans = []
+    redis = r()
     for name, rank, place in zip(names, ranks, places):
         action = f'LAST_GAMES_USER_{name}'
-        print(f'user = {name}')
-        keys = await redis.keys(action)
-        while(not keys):
-            async with httpx.AsyncClient() as client:
-                await client.post(url_top, data = json.dumps({"name":name}))
-                keys = await redis.keys(action)
-                print('RE TRY')
+        client = httpx.AsyncClient()
+        body = {'name': name}
+        try:
+            while not (keys := await redis.keys(action)):
+                await client.post(url_top, json=body)
+        finally:
+            await client.aclose()
         result = await redis.get(keys[0])
+        # await redis.delete(keys[0])
         res_t = []
-        result = json.loads(result)['games'][::-1]
-        for game in result:
+        games = json.loads(result)['games'][::-1]
+        del result
+        for game in games:
             test_int = False
-            if('score' in game.keys()):
-                try:
-                    int(game['score'])
-                    test_int = True
-                except:
-                    test_int = False
-            if('inPlay' not in game.keys() and test_int):
+            try:
+                int(game.get('score'))
+                test_int = True
+            except ValueError:
+                test_int = False
+            if not game.get('inPlay', False) and test_int:
                 res_t.append(game)
-                if(len(res_t) == 2):
+                if len(res_t) >= 2:
                     break
-        ans.append({'name': name, 'rank': rank, 'place': place, 'last':res_t})
+        ans.append({'name': name, 'rank': rank, 'place': place, 'last': res_t})
     return ans
