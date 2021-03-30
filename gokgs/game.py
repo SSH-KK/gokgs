@@ -1,6 +1,6 @@
 import httpx
 from gokgs.app import app
-from gokgs.redis import r                                                                                                                                                                from gokgs.redis import r
+from gokgs.redis import r
 import json
 
 url_games = 'http://localhost:8081/ROOM_LOAD_GAME'
@@ -15,7 +15,7 @@ async def get_game(game_timestamp: str):
         'channelId': 5
     }
     redis = r()
-    redis.lpush('TIMESTAMP_QUERY', game_timestamp)
+    await redis.lpush('TIMESTAMP_QUERY', game_timestamp)
     try:
         await client.post(url_games, json=body)
         while not (keys := await redis.keys(action)):

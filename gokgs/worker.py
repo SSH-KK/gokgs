@@ -54,14 +54,14 @@ async def loop_worker():
                 timestamp = time.time_ns()
                 for i, msg in enumerate(msgs):
                     t = msg.get('type', 'UNKNOWN_TYPE')
-                    print(f'new_key = {t}')
+                    #print(f'new_key = {t}')
                     if t == 'LOGIN_SUCCESS':
                         await post('JOIN_REQUEST', {"channelId": 5})
                     if t == 'ARCHIVE_JOIN':
                         username = msg.get('user', {}).get('name', 'UNKNOWN_USER')
                         key = f'LAST_GAMES_USER_{username}'
                     elif t == 'GAME_JOIN':
-                        query = redis.lpop('TIMESTAMP_QUERY')
+                        query = await redis.lpop('TIMESTAMP_QUERY')
                         key = f'GAME_PAST_INFORMATION_{query}'
                     else:
                         key = f'{t}_{timestamp}_{i}'
@@ -95,7 +95,6 @@ async def get_route(action: str, order: str = 'all', delete: bool = True):
     redis = r()
     action = action.upper() + '_*'
     keys = await redis.keys(action)
-    #print(f'keys = {keys}')
     if not keys:
         return {}
     keys.sort()
@@ -104,7 +103,6 @@ async def get_route(action: str, order: str = 'all', delete: bool = True):
     elif order == 'last':
         keys = keys[-1:]
     result = await redis.mget(*keys)
-    #print(f'res = {result}')
     result = {k: v for k, v in zip(keys, result)}
     if delete:
         await redis.delete(*keys)

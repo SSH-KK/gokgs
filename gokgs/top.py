@@ -25,8 +25,9 @@ async def get_top_users():
         client = httpx.AsyncClient()
         body = {'name': name}
         try:
+            await client.post(url_top, json=body)
             while not (keys := await redis.keys(action)):
-                await client.post(url_top, json=body)
+                pass
         finally:
             await client.aclose()
         result = await redis.get(keys[0])
