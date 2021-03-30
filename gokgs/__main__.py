@@ -6,6 +6,7 @@ import dotenv
 from gokgs.app import app
 import gokgs.redis
 import gokgs.top
+import gokgs.game
 from gokgs import worker
 
 dotenv.load_dotenv()

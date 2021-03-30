@@ -21,7 +21,8 @@ client = httpx.AsyncClient()
 async def post(action, body):
     body = copy.deepcopy(body)
     body['type'] = action.upper()
-    resp = await client.post(URL, json=body)
+    body = json.dumps(body)
+    resp = await client.post(URL, data=body)
     resp.raise_for_status()
     return resp.text
 
@@ -35,7 +36,7 @@ async def login(name, password):
 
 
 async def get():
-    resp = await client.get(URL, timeout=15)
+    resp = await client.get(URL, timeout=20)
     resp.raise_for_status()
     try:
         return resp.json()
@@ -53,16 +54,22 @@ async def loop_worker():
                 timestamp = time.time_ns()
                 for i, msg in enumerate(msgs):
                     t = msg.get('type', 'UNKNOWN_TYPE')
+                    print(f'new_key = {t}')
+                    if t == 'LOGIN_SUCCESS':
+                        await post('JOIN_REQUEST', {"channelId": 5})
                     if t == 'ARCHIVE_JOIN':
                         username = msg.get('user', {}).get('name', 'UNKNOWN_USER')
                         key = f'LAST_GAMES_USER_{username}'
+                    elif t == 'GAME_JOIN':
+                        query = redis.lpop('TIMESTAMP_QUERY')
+                        key = f'GAME_PAST_INFORMATION_{query}'
                     else:
                         key = f'{t}_{timestamp}_{i}'
                     await redis.set(key, json.dumps(msg), expire=3600)
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                print(e, file=sys.stderr)
+                print(e)
                 await login(_name, _password)
     except asyncio.CancelledError:
         pass
@@ -120,3 +127,4 @@ async def init():
         return
     await login(_name, _password)
     _task = asyncio.create_task(loop_worker())
+

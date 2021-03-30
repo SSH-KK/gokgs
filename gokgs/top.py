@@ -35,15 +35,10 @@ async def get_top_users():
         games = json.loads(result)['games'][::-1]
         del result
         for game in games:
-            test_int = False
-            try:
-                int(game.get('score'))
-                test_int = True
-            except ValueError:
-                test_int = False
-            if not game.get('inPlay', False) and test_int:
+            if not game.get('inPlay', False) and game.get('score') != 'UNFINISHED':
                 res_t.append(game)
                 if len(res_t) >= 2:
                     break
         ans.append({'name': name, 'rank': rank, 'place': place, 'last': res_t})
     return ans
+
