@@ -22,5 +22,9 @@ async def get_game(game_timestamp: str):
             pass
     finally:
         await client.aclose()
-    result = await redis.get(keys[0])
-    return json.loads(result)
+    result = json.loads(await redis.get(keys[0]))['sgfEvents']
+    res = {
+        "gameSummary": result[0]['props'],
+        "sgfEvents": list(filter(lambda ob:ob['type']=='PROP_GROUP_ADDED',result[1:]))
+    }
+    return res
