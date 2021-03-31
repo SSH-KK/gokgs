@@ -11,7 +11,6 @@ from gokgs import worker
 
 dotenv.load_dotenv()
 
-
 def main():
     uvicorn.run(
         'gokgs.__main__:app',
