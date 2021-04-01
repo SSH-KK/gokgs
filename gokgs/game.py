@@ -5,9 +5,14 @@ import json
 
 url_games = 'http://localhost:8081/ROOM_LOAD_GAME'
 game_summary_keys = ['gameType','komi','size','white','black']
+associated_keys = {
+	'MOVE':'events',
+	'TERRITORY':'points'
+}
 
 @app.get('/game/{game_timestamp}')
 async def get_game(game_timestamp: str):
+    redis = r()
     action = f'GAME_PAST_INFORMATION_{game_timestamp}'
     client = httpx.AsyncClient()
     body = {
@@ -15,7 +20,6 @@ async def get_game(game_timestamp: str):
         'timestamp': game_timestamp,
         'channelId': 5
     }
-    redis = r()
     await redis.lpush('TIMESTAMP_QUERY', game_timestamp)
     try:
         await client.post(url_games, json=body)
@@ -24,9 +28,19 @@ async def get_game(game_timestamp: str):
     finally:
         await client.aclose()
     result = json.loads(await redis.get(keys[0]))
-    result['gameSummary'] = {**result['gameSummary'],**result['gameSummary']['players']}
+    gameSummary, all_events = result['gameSummary'], [ob for ob in result['sgfEvents'][1:] if ob['type'] == 'PROP_GROUP_ADDED']
+    gameSummary |= gameSummary['players']
+    sgfEvents={
+	'events':[],
+	'points':[],
+    }
+    for ob in all_events:
+        for prop in ob['props']:
+            if prop['name'] in associated_keys.keys():
+                sgfEvents[associated_keys[prop['name']]].append({'position':list(prop['loc'].values()) if isinstance(prop['loc'],dict) else prop['loc'], 'color':prop['color']})
+
     res = {
-        "gameSummary": {key:result['gameSummary'][key] for key in game_summary_keys},
-        "events": [{**ob['props'][0]['loc'],'color':ob['props'][0]['color']} if type(ob['props'][0]['loc'])==dict else {} for ob in list(filter(lambda ob:ob['type']=='PROP_GROUP_ADDED',result['sgfEvents'][1:]))]
+        "gameSummary": {key:gameSummary.get(key,{}) for key in game_summary_keys},
+        **sgfEvents,
     }
     return res
