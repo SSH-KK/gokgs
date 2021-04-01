@@ -61,7 +61,7 @@ async def loop_worker():
                         username = msg.get('user', {}).get('name', 'UNKNOWN_USER')
                         key = f'LAST_GAMES_USER_{username}'
                     elif t == 'GAME_JOIN':
-                        query = await redis.lpop('TIMESTAMP_QUERY')
+                        query = await redis.lpop('TIMESTAMP_QUERY')  # oops... may broke here
                         key = f'GAME_PAST_INFORMATION_{query}'
                     else:
                         key = f'{t}_{timestamp}_{i}'

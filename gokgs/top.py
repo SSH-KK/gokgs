@@ -23,8 +23,8 @@ async def get_top_users():
     for name, rank, place in zip(names, ranks, places):
         action = f'LAST_GAMES_USER_{name}'
         client = httpx.AsyncClient()
-        body = {'name': name}
         try:
+            body = {'name': name}
             while not (keys := await redis.keys(action)):
                 await client.post(url_top, json=body)
         finally:
