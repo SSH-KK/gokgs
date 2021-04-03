@@ -33,8 +33,6 @@ async def get_game(game_timestamp: str):
         await client.post(url_games, json=body)
         while not (keys := await redis.keys(action)):
             pass
-    finally:
-        await client.aclose()
     result = json.loads(await redis.get(keys[0]))
     gameSummary, all_events = result['gameSummary'], [ob for ob in result['sgfEvents'][1:] if ob['type'] == 'PROP_GROUP_ADDED']
     gameSummary |= gameSummary['players']

@@ -51,10 +51,6 @@ async def get():
     return msgs
 
 
-@app.get('/is_logged')
-async def is_logged():
-    return {'loggedIn': logged_in}
-
 
 async def loop_worker():
     redis = r()
@@ -84,6 +80,11 @@ async def loop_worker():
                 await login(_name, _password)
     except asyncio.CancelledError:
         pass
+
+
+@app.get('/is_logged')
+async def is_logged():
+    return {'loggedIn': logged_in}
 
 
 @app.post('/{action}')
