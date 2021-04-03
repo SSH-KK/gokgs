@@ -37,6 +37,7 @@ async def login(name, password):
 
 
 async def get():
+    global logged_in
     resp = await client.get(URL, timeout=20)
     resp.raise_for_status()
     try:
@@ -85,6 +86,18 @@ async def loop_worker():
 @app.get('/is_logged')
 async def is_logged():
     return {'loggedIn': logged_in}
+
+
+@app.post('/login')
+async def login_route(username: str, password: str):  # yew, its bad but fast
+    global _name, _password, _task
+    _name = username
+    _password = password
+    await login(username, password)
+    if _task:
+        _task.cancel()
+    _task = asyncio.create_task(loop_worker())
+    return 'check get /LOGIN'
 
 
 @app.post('/{action}')
