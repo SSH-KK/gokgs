@@ -6,8 +6,9 @@ import time
 import json
 
 import httpx
-from fastapi import Request, HTTPException
+from fastapi import Request, HTTPException, Body
 from retrying_async import retry
+from pydantic import BaseModel
 
 from gokgs.app import app
 from gokgs.redis import r
@@ -17,6 +18,9 @@ _name = _password = _task = None
 client = httpx.AsyncClient()
 logged_in = False
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 @retry(attempts=3, delay=1)
 async def post(action, body):
@@ -37,6 +41,7 @@ async def login(name, password):
 
 
 async def get():
+    global logged_in
     resp = await client.get(URL, timeout=20)
     resp.raise_for_status()
     try:
@@ -86,6 +91,16 @@ async def loop_worker():
 async def is_logged():
     return {'loggedIn': logged_in}
 
+@app.post('/login')
+async def login_route(request: LoginRequest = Body(..., embed=False)):
+    global _name, _password, _task
+    _name = request.username
+    _password = request.password
+    await login(_name, _password)
+    if _task:
+        _task.cancel()
+    _task = asyncio.create_task(loop_worker())
+    return 'check get /is_logged'
 
 @app.post('/{action}')
 async def post_route(action: str, req: Request):
