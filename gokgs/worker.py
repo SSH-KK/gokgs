@@ -103,11 +103,11 @@ async def login_route(request: LoginRequest = Body(..., embed=False)):
     return 'check get /is_logged'
 
 @app.post('/login')
-async def login_route(username: str, password: str):  # yew, its bad but fast
+async def login_route(request: LoginRequest = Body(..., embed=False)):  # yew, its bad but fast... Now lokks better
     global _name, _password, _task
-    _name = username
-    _password = password
-    await login(username, password)
+    _name = request.username
+    _password = request.password
+    await login(_name, _password)
     if _task:
         _task.cancel()
     _task = asyncio.create_task(loop_worker())
