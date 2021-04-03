@@ -15,6 +15,7 @@ from gokgs.redis import r
 URL = 'https://www.gokgs.com/json/access'
 _name = _password = _task = None
 client = httpx.AsyncClient()
+logged_in = False
 
 
 @retry(attempts=3, delay=1)
@@ -39,9 +40,20 @@ async def get():
     resp = await client.get(URL, timeout=20)
     resp.raise_for_status()
     try:
-        return resp.json()
+        body = resp.json()
     except json.JSONDecodeError:
-        return {}
+        body = {}
+    msgs = body.get('messages', [])
+    if len(msgs) and msgs[-1]['type'] == 'LOGOUT':
+        logged_in = False
+    elif any(msg['type'] == 'LOGIN_SUCCESS' for msg in msgs):
+        logged_in = True
+    return msgs
+
+
+@app.get('/is_logged')
+async def is_logged():
+    return {'loggedIn': logged_in}
 
 
 async def loop_worker():
@@ -49,8 +61,7 @@ async def loop_worker():
     try:
         while True:
             try:
-                resp = await get()
-                msgs = resp.get('messages', [])
+                msgs = await get()
                 timestamp = time.time_ns()
                 for i, msg in enumerate(msgs):
                     t = msg.get('type', 'UNKNOWN_TYPE')
